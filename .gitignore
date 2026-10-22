@@ -1,0 +1,19 @@
+# Secretos: NUNCA subir (contienen la contraseña de Supabase)
+.env
+.env.*
+!.env.example
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Editor y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
