@@ -17,7 +17,7 @@ import {
 import RecordSection from "./RecordSection";
 
 // El visor 3D (Three.js) se descarga aparte para no hacer lenta la carga inicial
-const Design3DViewer = lazy(() => import("./Design3DViewer"));
+const Viewer3D = lazy(() => import("./Viewer3D"));
 import "./App.css";
 
 const NEW_CLIENT = "new";
@@ -198,10 +198,10 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-symbol">✳</span>
+          <img className="brand-logo" src="/images/logo-ch-small.jpg" alt="" />
           <div>
-            <h2>INK HOUSE</h2>
-            <p>TATTOO STUDIO</p>
+            <h2>C/H</h2>
+            <p>TATTOO ESTUDIO</p>
           </div>
         </div>
 
@@ -232,7 +232,7 @@ function App() {
             <p className="eyebrow">ESTUDIO DE TATUAJES</p>
             <h1>{SECTIONS.find((item) => item.id === section).title}</h1>
           </div>
-          <div className="topbar-tag">✳ INK HOUSE</div>
+          <div className="topbar-tag">✳ TATTOO ESTUDIO C/H</div>
         </header>
 
         <section className="content">
@@ -245,6 +245,35 @@ function App() {
             <>
               {section === "designs" && (
                 <>
+                  <div className="hero">
+                    <div className="hero-text">
+                      <p className="eyebrow">BIENVENIDO A</p>
+                      <h2>Tattoo Estudio C/H</h2>
+                      <p className="hero-tagline">Cada tattoo tiene una historia.</p>
+                      <p className="hero-description">
+                        Elige un diseño de nuestro catálogo o trae tu propia idea.
+                        Reserva tu cita en minutos.
+                      </p>
+                      <button
+                        className="primary-button"
+                        onClick={() => chooseDesignFromCatalog(null)}
+                      >
+                        ＋ Reservar una cita
+                      </button>
+                    </div>
+
+                    <Suspense
+                      fallback={<div className="viewer-3d hero-viewer viewer-loading">Cargando logo 3D...</div>}
+                    >
+                      <Viewer3D
+                        imageUrl="/images/logo-ch.jpg"
+                        width={3.1}
+                        height={3.42}
+                        className="hero-viewer"
+                      />
+                    </Suspense>
+                  </div>
+
                   <div className="section-intro">
                     <div>
                       <h2>Encuentra tu próximo tatuaje</h2>
@@ -262,7 +291,7 @@ function App() {
                       <Suspense
                         fallback={<div className="viewer-3d viewer-loading">Cargando vista 3D...</div>}
                       >
-                        <Design3DViewer design={featuredDesign} />
+                        <Viewer3D imageUrl={featuredDesign.image_url} />
                       </Suspense>
 
                       <div className="featured-info">
@@ -783,8 +812,8 @@ function App() {
         </section>
 
         <footer className="footer">
-          <span>INK HOUSE · SISTEMA DE GESTIÓN</span>
-          <span>Arte en la piel, precisión en cada detalle.</span>
+          <span>TATTOO ESTUDIO C/H · SISTEMA DE GESTIÓN</span>
+          <span>Cada tattoo tiene una historia.</span>
         </footer>
       </main>
     </div>

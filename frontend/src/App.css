@@ -59,6 +59,14 @@ button {
   padding: 0 10px 38px;
 }
 
+.brand-logo {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+  border: 1px solid #474033;
+  border-radius: 50%;
+}
+
 .brand-symbol {
   color: var(--accent);
   font-size: 37px;
@@ -421,6 +429,65 @@ button {
   color: var(--muted);
 }
 
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  margin-bottom: 34px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 80% 50%, rgba(255, 79, 216, 0.12), transparent 45%),
+    radial-gradient(circle at 60% 30%, rgba(63, 243, 232, 0.1), transparent 40%),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 36px;
+}
+
+.hero-text .eyebrow {
+  margin: 0;
+}
+
+.hero-text h2 {
+  margin: 0;
+  font-family: "Playfair Display", serif;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.hero-tagline {
+  margin: 0;
+  color: #ff8fe6;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 12px rgba(255, 79, 216, 0.6);
+}
+
+.hero-description {
+  max-width: 380px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.hero .viewer-3d {
+  background: transparent;
+}
+
+.hero-viewer {
+  min-height: 400px;
+}
+
 .featured-3d {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -491,8 +558,17 @@ button {
 }
 
 @media (max-width: 900px) {
-  .featured-3d {
+  .featured-3d,
+  .hero {
     grid-template-columns: 1fr;
+  }
+
+  .hero-text {
+    padding: 26px 22px 0;
+  }
+
+  .hero-viewer {
+    min-height: 320px;
   }
 
   .viewer-3d {
