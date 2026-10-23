@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   getStyles,
   createStyle,
@@ -15,6 +15,9 @@ import {
   updateAppointmentStatus,
 } from "./api";
 import RecordSection from "./RecordSection";
+
+// El visor 3D (Three.js) se descarga aparte para no hacer lenta la carga inicial
+const Design3DViewer = lazy(() => import("./Design3DViewer"));
 import "./App.css";
 
 const NEW_CLIENT = "new";
@@ -54,7 +57,13 @@ function App() {
   const [selectedDesignId, setSelectedDesignId] = useState(null);
   const [styleFilter, setStyleFilter] = useState(null);
 
+  const [featuredDesignId, setFeaturedDesignId] = useState(null);
+
   const selectedDesign = designs.find((design) => design.id === selectedDesignId);
+  const designsWithImage = designs.filter((design) => design.image_url);
+  const featuredDesign =
+    designsWithImage.find((design) => design.id === featuredDesignId) ||
+    designsWithImage[0];
   const visibleDesigns = styleFilter
     ? designs.filter((design) => design.style_id === styleFilter)
     : designs;
@@ -247,6 +256,51 @@ function App() {
                       {visibleDesigns.length} diseños
                     </span>
                   </div>
+
+                  {featuredDesign && (
+                    <div className="featured-3d">
+                      <Suspense
+                        fallback={<div className="viewer-3d viewer-loading">Cargando vista 3D...</div>}
+                      >
+                        <Design3DViewer design={featuredDesign} />
+                      </Suspense>
+
+                      <div className="featured-info">
+                        <p className="eyebrow">VISTA 3D INTERACTIVA</p>
+                        <span className="style-label">{featuredDesign.style}</span>
+                        <h3>{featuredDesign.name}</h3>
+                        <p className="featured-price">
+                          Bs {Number(featuredDesign.price).toFixed(2)}
+                        </p>
+                        <p className="featured-hint">
+                          Arrastra la tarjeta para girarla y verla desde cualquier ángulo.
+                        </p>
+
+                        <div className="featured-options">
+                          {designsWithImage.map((design) => (
+                            <button
+                              key={design.id}
+                              className={
+                                design.id === featuredDesign.id
+                                  ? "filter-chip active"
+                                  : "filter-chip"
+                              }
+                              onClick={() => setFeaturedDesignId(design.id)}
+                            >
+                              {design.name}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          className="primary-button"
+                          onClick={() => chooseDesignFromCatalog(featuredDesign)}
+                        >
+                          Elegir este diseño →
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="style-filters">
                     <button

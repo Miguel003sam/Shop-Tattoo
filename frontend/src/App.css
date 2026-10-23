@@ -421,6 +421,86 @@ button {
   color: var(--muted);
 }
 
+.featured-3d {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  margin-bottom: 26px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.viewer-3d {
+  height: 100%;
+  min-height: 360px;
+  background: radial-gradient(circle at 50% 45%, #39352c, #141412 70%);
+  cursor: grab;
+  touch-action: none;
+}
+
+.viewer-3d:active {
+  cursor: grabbing;
+}
+
+.viewer-loading {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.featured-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px;
+}
+
+.featured-info .eyebrow {
+  margin: 0;
+}
+
+.featured-info h3 {
+  margin: 4px 0 0;
+  font-family: "Playfair Display", serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.featured-price {
+  margin: 0;
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.featured-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.featured-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+@media (max-width: 900px) {
+  .featured-3d {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer-3d {
+    height: 280px;
+    min-height: 0;
+  }
+}
+
 .inline-form {
   padding: 20px;
   margin-bottom: 22px;
