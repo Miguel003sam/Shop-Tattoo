@@ -1,10 +1,11 @@
 import os
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import get_db
+from notificaciones import enviar_slack, aviso_nueva_cita, aviso_nuevo_producto
 from models import Style, Artist, Client, Product, Design, Appointment
 from schemas import (
     ProductCreate,
@@ -122,11 +123,18 @@ def listar_productos(db: Session = Depends(get_db)):
 
 
 @app.post("/products", response_model=ProductResponse, status_code=201)
-def crear_producto(producto: ProductCreate, db: Session = Depends(get_db)):
+def crear_producto(
+    producto: ProductCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     nuevo = Product(**producto.model_dump())
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
+    # Aviso a Slack en segundo plano (no retrasa la respuesta)
+    background_tasks.add_task(enviar_slack, aviso_nuevo_producto(nuevo))
     return nuevo
 
 
@@ -164,6 +172,7 @@ def listar_citas(db: Session = Depends(get_db)):
 )
 def crear_cita(
     cita: AppointmentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     if cita.status not in ESTADOS_VALIDOS:
@@ -180,6 +189,9 @@ def crear_cita(
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
+
+    # Aviso a Slack en segundo plano (no retrasa la respuesta)
+    background_tasks.add_task(enviar_slack, aviso_nueva_cita(nueva))
     return nueva
 
 
