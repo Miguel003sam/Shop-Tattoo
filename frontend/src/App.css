@@ -59,6 +59,10 @@ button {
   padding: 0 10px 38px;
 }
 
+.menu-toggle {
+  display: none;
+}
+
 .brand-logo {
   width: 46px;
   height: 46px;
@@ -858,17 +862,57 @@ tbody tr:last-child td {
     padding: 20px;
   }
 
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
   .brand {
-    padding-bottom: 20px;
+    padding: 0;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    color: var(--accent);
+    background: #292720;
+    border: 1px solid #474033;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .menu-toggle span {
+    width: 1em;
+    font-size: 17px;
+    line-height: 1;
+    text-align: center;
+  }
+
+  .menu-toggle:hover,
+  .menu-open .menu-toggle {
+    border-color: var(--accent);
   }
 
   .menu-label,
-  .sidebar-footer {
+  .sidebar-footer,
+  .sidebar nav {
     display: none;
   }
 
-  .sidebar nav {
+  .sidebar.menu-open nav {
+    display: grid;
     grid-template-columns: 1fr;
+    gap: 6px;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
   }
 
   .main {

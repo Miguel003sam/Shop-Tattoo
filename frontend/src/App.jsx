@@ -45,6 +45,7 @@ const emptyForm = {
 
 function App() {
   const [section, setSection] = useState("designs");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [styles, setStyles] = useState([]);
   const [artists, setArtists] = useState([]);
   const [clients, setClients] = useState([]);
@@ -115,6 +116,11 @@ function App() {
   function selectDesign(design) {
     setSelectedDesignId(design ? design.id : null);
     setForm({ ...form, price: design ? String(design.price) : "" });
+  }
+
+  function goToSection(id) {
+    setSection(id);
+    setMenuOpen(false);
   }
 
   function chooseDesignFromCatalog(design) {
@@ -196,23 +202,35 @@ function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <img className="brand-logo" src="/images/logo-ch-small.jpg" alt="" />
-          <div>
-            <h2>C/H</h2>
-            <p>TATTOO ESTUDIO</p>
+      <aside className={menuOpen ? "sidebar menu-open" : "sidebar"}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <img className="brand-logo" src="/images/logo-ch-small.jpg" alt="" />
+            <div>
+              <h2>C/H</h2>
+              <p>TATTOO ESTUDIO</p>
+            </div>
           </div>
+
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-controls="main-nav"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <span aria-hidden="true">{menuOpen ? "✕" : "☰"}</span> Menú
+          </button>
         </div>
 
         <p className="menu-label">MENÚ PRINCIPAL</p>
 
-        <nav>
+        <nav id="main-nav">
           {SECTIONS.map((item) => (
             <button
               key={item.id}
               className={section === item.id ? "nav-link active" : "nav-link"}
-              onClick={() => setSection(item.id)}
+              onClick={() => goToSection(item.id)}
             >
               <span>{item.icon}</span> {item.label}
             </button>
