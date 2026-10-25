@@ -4,11 +4,20 @@ import os
 import urllib.request
 from zoneinfo import ZoneInfo
 
-logger = logging.getLogger(__name__)
+# Se usa el logger de uvicorn para que los mensajes aparezcan en los Logs de Render
+logger = logging.getLogger("uvicorn.error")
 
 # URL secreta del webhook de Slack (en .env y en Render). Si no existe, no se envía nada.
-SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
+# Se quitan espacios y comillas por si se pegaron por error al configurarla.
+SLACK_WEBHOOK_URL = (os.getenv("SLACK_WEBHOOK_URL") or "").strip().strip("\"'")
 ZONA_BOLIVIA = ZoneInfo("America/La_Paz")
+
+if not SLACK_WEBHOOK_URL:
+    logger.info("Slack: SLACK_WEBHOOK_URL no está configurada; no se enviarán avisos")
+elif not SLACK_WEBHOOK_URL.startswith("https://hooks.slack.com/services/"):
+    logger.warning("Slack: SLACK_WEBHOOK_URL no parece una URL de webhook de Slack")
+else:
+    logger.info("Slack: webhook configurado; se enviarán avisos")
 
 
 def enviar_slack(texto: str):
@@ -25,9 +34,13 @@ def enviar_slack(texto: str):
     # Si Slack falla, solo se registra el error: la cita o el producto ya se guardaron
     try:
         with urllib.request.urlopen(peticion, timeout=5):
-            pass
+            logger.info("Slack: aviso enviado")
+    except urllib.error.HTTPError as error:
+        # Slack explica el problema en el cuerpo (ej. "no_service" si el webhook fue borrado)
+        detalle = error.read().decode("utf-8", "replace")
+        logger.warning("Slack: no se pudo enviar el aviso (HTTP %s: %s)", error.code, detalle)
     except Exception as error:
-        logger.warning("No se pudo enviar el aviso a Slack: %s", error)
+        logger.warning("Slack: no se pudo enviar el aviso: %s", error)
 
 
 def aviso_nueva_cita(cita) -> str:
