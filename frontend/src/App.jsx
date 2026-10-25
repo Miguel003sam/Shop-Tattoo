@@ -2,17 +2,21 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   getStyles,
-  createStyle,
   getArtists,
-  createArtist,
   getClients,
   createClient,
   getProducts,
-  createProduct,
   getDesigns,
   getAppointments,
   createAppointment,
   updateAppointmentStatus,
+  getAdminKey,
+  setAdminKey,
+  verifyAdmin,
+  stylesApi,
+  artistsApi,
+  clientsApi,
+  productsApi,
 } from "./api";
 import RecordSection from "./RecordSection";
 
@@ -22,15 +26,25 @@ import "./App.css";
 
 const NEW_CLIENT = "new";
 
+// admin: true = sección visible solo en modo administrador
 const SECTIONS = [
   { id: "designs", icon: "✳", label: "Catálogo de diseños", title: "Catálogo de diseños" },
-  { id: "new", icon: "＋", label: "Registrar cita", title: "Nueva cita" },
-  { id: "appointments", icon: "▤", label: "Administrar citas", title: "Administración de citas" },
-  { id: "clients", icon: "☺", label: "Clientes", title: "Clientes" },
-  { id: "artists", icon: "✎", label: "Tatuadores", title: "Tatuadores" },
-  { id: "styles", icon: "◈", label: "Estilos", title: "Estilos de tatuaje" },
+  { id: "new", icon: "+", label: "Registrar cita", title: "Nueva cita" },
   { id: "products", icon: "◍", label: "Productos de cuidado", title: "Productos de cuidado" },
+  { id: "appointments", icon: "▤", label: "Administrar citas", title: "Administración de citas", admin: true },
+  { id: "clients", icon: "☺", label: "Clientes", title: "Clientes", admin: true },
+  { id: "artists", icon: "✎", label: "Tatuadores", title: "Tatuadores", admin: true },
+  { id: "styles", icon: "◈", label: "Estilos", title: "Estilos de tatuaje", admin: true },
+  { id: "admin", icon: "🔒", label: "Modo administrador", title: "Modo administrador", hidden: true },
 ];
+
+function productPayload(data) {
+  return {
+    name: data.name,
+    price: Number(data.price),
+    stock: data.stock ? Number(data.stock) : 0,
+  };
+}
 
 const emptyForm = {
   client_id: "",
@@ -59,6 +73,18 @@ function App() {
   const [styleFilter, setStyleFilter] = useState(null);
 
   const [featuredDesignId, setFeaturedDesignId] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [isAdmin, setIsAdmin] = useState(() => Boolean(getAdminKey()));
+  const [adminPassword, setAdminPassword] = useState("");
+
+  // Si un visitante llega a una sección de administrador, se le muestra el catálogo
+  const currentSection = SECTIONS.find((item) => item.id === section) || SECTIONS[0];
+  const activeSection = currentSection.admin && !isAdmin ? "designs" : currentSection.id;
+  const activeTitle = SECTIONS.find((item) => item.id === activeSection).title;
+  const navSections = SECTIONS.filter((item) => !item.hidden && (!item.admin || isAdmin));
+
+  // Los visitantes siempre reservan como cliente nuevo; el admin puede elegir uno existente
+  const clientChoice = isAdmin ? form.client_id : NEW_CLIENT;
 
   const selectedDesign = designs.find((design) => design.id === selectedDesignId);
   const designsWithImage = designs.filter((design) => design.image_url);
@@ -69,40 +95,85 @@ function App() {
     ? designs.filter((design) => design.style_id === styleFilter)
     : designs;
 
-  const [form, setForm] = useState(emptyForm);
-
-  async function loadData() {
-    setLoading(true);
+  // silent: recarga sin mostrar "Cargando..." (después de guardar o eliminar)
+  async function loadData({ silent = false, admin = isAdmin } = {}) {
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
 
     try {
-      const [
-        styleData,
-        artistData,
-        clientData,
-        productData,
-        designData,
-        appointmentData,
-      ] = await Promise.all([
+      const [styleData, artistData, productData, designData] = await Promise.all([
         getStyles(),
         getArtists(),
-        getClients(),
         getProducts(),
         getDesigns(),
-        getAppointments(),
       ]);
 
       setStyles(styleData);
       setArtists(artistData);
-      setClients(clientData);
       setProducts(productData);
       setDesigns(designData);
-      setAppointments(appointmentData);
+
+      // Clientes y citas tienen datos personales: solo se cargan en modo administrador
+      if (admin) {
+        const [clientData, appointmentData] = await Promise.all([
+          getClients(),
+          getAppointments(),
+        ]);
+        setClients(clientData);
+        setAppointments(appointmentData);
+      } else {
+        setClients([]);
+        setAppointments([]);
+      }
     } catch (err) {
-      setError(err.message || "No se pudieron cargar los datos.");
+      showError(err, "No se pudieron cargar los datos.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function showError(err, fallback) {
+    if (err.status === 401 && isAdmin) {
+      logout();
+      setError("La contraseña de administrador ya no es válida. Ingresa de nuevo.");
+      return;
+    }
+    setError(err.message || fallback);
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    try {
+      await verifyAdmin(adminPassword);
+      setAdminKey(adminPassword);
+      setIsAdmin(true);
+      setAdminPassword("");
+      setMessage("Modo administrador activado.");
+      setSection("appointments");
+      await loadData({ silent: true, admin: true });
+    } catch (err) {
+      setError(err.status === 401 ? "Contraseña incorrecta." : err.message);
+    }
+  }
+
+  function logout() {
+    setAdminKey("");
+    setIsAdmin(false);
+    setClients([]);
+    setAppointments([]);
+    setForm((current) => ({ ...current, client_id: "" }));
+  }
+
+  function handleLogout() {
+    logout();
+    setError("");
+    setMessage("Saliste del modo administrador.");
+    setSection("designs");
   }
 
   useEffect(() => {
@@ -137,9 +208,9 @@ function App() {
     const details = form.tattoo_description.trim();
 
     try {
-      let clientId = Number(form.client_id);
+      let clientId = Number(clientChoice);
 
-      if (form.client_id === NEW_CLIENT) {
+      if (clientChoice === NEW_CLIENT) {
         const newClient = await createClient({
           full_name: form.client_name.trim(),
           phone: form.client_phone.trim() || null,
@@ -160,27 +231,43 @@ function App() {
       setForm(emptyForm);
       setSelectedDesignId(null);
 
-      setMessage("¡Cita registrada correctamente!");
-      await loadData();
-      setSection("appointments");
+      if (isAdmin) {
+        setMessage("¡Cita registrada correctamente!");
+        setSection("appointments");
+      } else {
+        setMessage("¡Cita registrada! El estudio se comunicará contigo para confirmarla.");
+        setSection("designs");
+      }
+      await loadData({ silent: true });
     } catch (err) {
-      setError(err.message || "No se pudo registrar la cita.");
+      showError(err, "No se pudo registrar la cita.");
     }
   }
 
-  async function createRecord(createFn, data, successMessage) {
+  // Ejecuta una acción de administrador (crear, editar o eliminar) y recarga los datos
+  async function runAction(action, successMessage) {
     setError("");
     setMessage("");
 
     try {
-      await createFn(data);
+      await action();
       setMessage(successMessage);
-      await loadData();
+      await loadData({ silent: true });
       return true;
     } catch (err) {
-      setError(err.message || "No se pudo guardar el registro.");
+      showError(err, "No se pudo completar la acción.");
       return false;
     }
+  }
+
+  // Funciones de crear/editar/eliminar para RecordSection
+  function managers(api, nombre, toPayload = (data) => data) {
+    return {
+      canManage: isAdmin,
+      onCreate: (data) => runAction(() => api.create(toPayload(data)), `${nombre} registrado correctamente.`),
+      onUpdate: (id, data) => runAction(() => api.update(id, toPayload(data)), `${nombre} actualizado correctamente.`),
+      onDelete: (id) => runAction(() => api.remove(id), `${nombre} eliminado correctamente.`),
+    };
   }
 
   function countBy(items, key, id) {
@@ -194,9 +281,9 @@ function App() {
     try {
       await updateAppointmentStatus(id, status);
       setMessage("Estado de la cita actualizado.");
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
-      setError(err.message || "No se pudo actualizar el estado.");
+      showError(err, "No se pudo actualizar el estado.");
     }
   }
 
@@ -226,15 +313,22 @@ function App() {
         <p className="menu-label">MENÚ PRINCIPAL</p>
 
         <nav id="main-nav">
-          {SECTIONS.map((item) => (
+          {navSections.map((item) => (
             <button
               key={item.id}
-              className={section === item.id ? "nav-link active" : "nav-link"}
+              className={activeSection === item.id ? "nav-link active" : "nav-link"}
               onClick={() => goToSection(item.id)}
             >
               <span>{item.icon}</span> {item.label}
             </button>
           ))}
+
+          <button
+            className={activeSection === "admin" ? "nav-link admin-link active" : "nav-link admin-link"}
+            onClick={() => goToSection("admin")}
+          >
+            <span>{isAdmin ? "🔓" : "🔒"}</span> {isAdmin ? "Administrador (activo)" : "Modo administrador"}
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -248,7 +342,7 @@ function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">ESTUDIO DE TATUAJES</p>
-            <h1>{SECTIONS.find((item) => item.id === section).title}</h1>
+            <h1>{activeTitle}</h1>
           </div>
           <div className="topbar-tag">✳ TATTOO ESTUDIO C/H</div>
         </header>
@@ -261,7 +355,7 @@ function App() {
             <div className="empty-state">Cargando información...</div>
           ) : (
             <>
-              {section === "designs" && (
+              {activeSection === "designs" && (
                 <>
                   <div className="hero">
                     <div className="hero-text">
@@ -276,7 +370,7 @@ function App() {
                         className="primary-button"
                         onClick={() => chooseDesignFromCatalog(null)}
                       >
-                        ＋ Reservar una cita
+                        + Reservar una cita
                       </button>
                     </div>
 
@@ -419,12 +513,12 @@ function App() {
                     className="primary-button"
                     onClick={() => chooseDesignFromCatalog(null)}
                   >
-                    ＋ Solicitar una cita
+                    + Solicitar una cita
                   </button>
                 </>
               )}
 
-              {section === "new" && (
+              {activeSection === "new" && (
                 <div className="form-panel">
                   <div className="panel-heading">
                     <span className="panel-icon">✳</span>
@@ -436,25 +530,27 @@ function App() {
 
                   <form onSubmit={handleSubmit}>
                     <div className="form-row">
-                      <label>
-                        Cliente
-                        <select
-                          name="client_id"
-                          value={form.client_id}
-                          onChange={changeForm}
-                          required
-                        >
-                          <option value="" disabled>
-                            Selecciona un cliente
-                          </option>
-                          {clients.map((client) => (
-                            <option key={client.id} value={client.id}>
-                              {client.full_name}
+                      {isAdmin && (
+                        <label>
+                          Cliente
+                          <select
+                            name="client_id"
+                            value={form.client_id}
+                            onChange={changeForm}
+                            required
+                          >
+                            <option value="" disabled>
+                              Selecciona un cliente
                             </option>
-                          ))}
-                          <option value={NEW_CLIENT}>＋ Nuevo cliente</option>
-                        </select>
-                      </label>
+                            {clients.map((client) => (
+                              <option key={client.id} value={client.id}>
+                                {client.full_name}
+                              </option>
+                            ))}
+                            <option value={NEW_CLIENT}>+ Nuevo cliente</option>
+                          </select>
+                        </label>
+                      )}
 
                       <label>
                         Tatuador
@@ -474,10 +570,10 @@ function App() {
                       </label>
                     </div>
 
-                    {form.client_id === NEW_CLIENT && (
+                    {clientChoice === NEW_CLIENT && (
                       <div className="new-client">
                         <label>
-                          Nombre del nuevo cliente
+                          {isAdmin ? "Nombre del nuevo cliente" : "Tu nombre completo"}
                           <input
                             name="client_name"
                             value={form.client_name}
@@ -489,13 +585,14 @@ function App() {
 
                         <div className="form-row">
                           <label>
-                            Teléfono (opcional)
+                            {isAdmin ? "Teléfono (opcional)" : "Teléfono (para confirmar tu cita)"}
                             <input
                               type="tel"
                               name="client_phone"
                               value={form.client_phone}
                               onChange={changeForm}
                               placeholder="70000000"
+                              required={!isAdmin}
                             />
                           </label>
 
@@ -615,7 +712,7 @@ function App() {
                 </div>
               )}
 
-              {section === "appointments" && (
+              {activeSection === "appointments" && (
                 <>
                   <div className="section-intro">
                     <div>
@@ -638,7 +735,7 @@ function App() {
                       </p>
                       <button
                         className="primary-button"
-                        onClick={() => setSection("new")}
+                        onClick={() => goToSection("new")}
                       >
                         Registrar primera cita
                       </button>
@@ -705,12 +802,13 @@ function App() {
                 </>
               )}
 
-              {section === "clients" && (
+              {activeSection === "clients" && (
                 <RecordSection
                   title="Clientes del estudio"
                   description="Personas que han reservado una cita."
                   countLabel="clientes"
                   formTitle="Registrar nuevo cliente"
+                  editTitle="Editar cliente"
                   fields={[
                     { name: "full_name", label: "Nombre completo", placeholder: "Nombre y apellido", required: true },
                     { name: "phone", label: "Teléfono", placeholder: "70000000", type: "tel" },
@@ -728,18 +826,17 @@ function App() {
                   }))}
                   emptyIcon="☺"
                   emptyText="Aún no hay clientes registrados."
-                  onCreate={(data) =>
-                    createRecord(createClient, data, "Cliente registrado correctamente.")
-                  }
+                  {...managers(clientsApi, "Cliente")}
                 />
               )}
 
-              {section === "artists" && (
+              {activeSection === "artists" && (
                 <RecordSection
                   title="Equipo de tatuadores"
                   description="Artistas que atienden las citas del estudio."
                   countLabel="tatuadores"
                   formTitle="Registrar nuevo tatuador"
+                  editTitle="Editar tatuador"
                   fields={[
                     { name: "full_name", label: "Nombre completo", placeholder: "Nombre y apellido", required: true },
                     { name: "specialty", label: "Especialidad", placeholder: "Fine Line, Blackwork..." },
@@ -757,18 +854,17 @@ function App() {
                   }))}
                   emptyIcon="✎"
                   emptyText="Aún no hay tatuadores registrados."
-                  onCreate={(data) =>
-                    createRecord(createArtist, data, "Tatuador registrado correctamente.")
-                  }
+                  {...managers(artistsApi, "Tatuador")}
                 />
               )}
 
-              {section === "styles" && (
+              {activeSection === "styles" && (
                 <RecordSection
                   title="Estilos de tatuaje"
                   description="Categorías que organizan el catálogo de diseños."
                   countLabel="estilos"
                   formTitle="Registrar nuevo estilo"
+                  editTitle="Editar estilo"
                   fields={[
                     { name: "name", label: "Nombre del estilo", placeholder: "Neotradicional", required: true },
                     { name: "description", label: "Descripción", placeholder: "Breve descripción del estilo" },
@@ -784,18 +880,17 @@ function App() {
                   }))}
                   emptyIcon="◈"
                   emptyText="Aún no hay estilos registrados."
-                  onCreate={(data) =>
-                    createRecord(createStyle, data, "Estilo registrado correctamente.")
-                  }
+                  {...managers(stylesApi, "Estilo")}
                 />
               )}
 
-              {section === "products" && (
+              {activeSection === "products" && (
                 <RecordSection
                   title="Productos de cuidado"
                   description="Productos para el cuidado del tatuaje que vende el estudio."
                   countLabel="productos"
                   formTitle="Registrar nuevo producto"
+                  editTitle="Editar producto"
                   fields={[
                     { name: "name", label: "Nombre del producto", placeholder: "Crema cicatrizante 50 ml", required: true },
                     { name: "price", label: "Precio (Bs)", placeholder: "0.00", type: "number", min: "0", step: "0.01", required: true },
@@ -812,18 +907,46 @@ function App() {
                   }))}
                   emptyIcon="◍"
                   emptyText="Aún no hay productos registrados."
-                  onCreate={(data) =>
-                    createRecord(
-                      createProduct,
-                      {
-                        name: data.name,
-                        price: Number(data.price),
-                        stock: data.stock ? Number(data.stock) : 0,
-                      },
-                      "Producto registrado correctamente."
-                    )
-                  }
+                  {...managers(productsApi, "Producto", productPayload)}
                 />
+              )}
+
+              {activeSection === "admin" && (
+                <div className="form-panel admin-panel">
+                  <div className="panel-heading">
+                    <span className="panel-icon">{isAdmin ? "🔓" : "🔒"}</span>
+                    <div>
+                      <h2>Modo administrador</h2>
+                      <p>
+                        {isAdmin
+                          ? "Puedes ver citas y clientes, y agregar, editar o eliminar registros."
+                          : "Ingresa la contraseña del estudio para administrar citas, clientes, tatuadores, estilos y productos."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isAdmin ? (
+                    <button className="secondary-button" type="button" onClick={handleLogout}>
+                      Salir del modo administrador
+                    </button>
+                  ) : (
+                    <form onSubmit={handleLogin}>
+                      <label>
+                        Contraseña
+                        <input
+                          type="password"
+                          value={adminPassword}
+                          onChange={(event) => setAdminPassword(event.target.value)}
+                          autoComplete="current-password"
+                          required
+                        />
+                      </label>
+                      <button className="primary-button" type="submit">
+                        Ingresar →
+                      </button>
+                    </form>
+                  )}
+                </div>
               )}
             </>
           )}

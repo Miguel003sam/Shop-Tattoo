@@ -733,6 +733,83 @@ button {
   justify-self: start;
 }
 
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.secondary-button {
+  padding: 13px 19px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid #474033;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.secondary-button:hover {
+  background: #292720;
+  border-color: var(--accent);
+}
+
+.admin-panel {
+  max-width: 520px;
+}
+
+.nav-link.admin-link {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 7px 7px;
+  padding-top: 18px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-button {
+  padding: 6px 10px;
+  color: var(--accent);
+  background: #292720;
+  border: 1px solid #474033;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.action-button:hover {
+  border-color: var(--accent);
+}
+
+.action-button.danger {
+  color: #ffb8b0;
+  background: #3a211f;
+  border-color: #75413b;
+}
+
+.action-button.danger:hover {
+  border-color: #ffb8b0;
+}
+
+.confirm-text {
+  color: #ffb8b0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.inline-form.editing {
+  border-color: var(--accent);
+}
+
+tr.row-editing td {
+  background: #23211b;
+}
+
 .table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--border);
